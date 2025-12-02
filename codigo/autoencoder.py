@@ -125,7 +125,7 @@ def objective(trial):
         for batch_features, batch_targets in train_loader:
             optimizer.zero_grad()
             outputs = model(batch_features.cuda())
-            loss = criterion(outputs, batch_targets)
+            loss = criterion(outputs.cuda(), batch_targets.cuda())
             loss.backward()
             optimizer.step()
             train_loss += loss.item() * batch_features.size(0)
@@ -139,7 +139,7 @@ def objective(trial):
         with torch.no_grad():
             for batch_features, batch_targets in test_loader:
                 outputs = model(batch_features.cuda())
-                loss = criterion(outputs, batch_targets)
+                loss = criterion(outputs.cuda(), batch_targets.cuda())
                 test_loss += loss.item() * batch_features.size(0)
 
         test_loss = test_loss / len(test_loader.dataset)
@@ -343,7 +343,7 @@ for epoch in range(EPOCHS):
     for batch_features, batch_targets in train_loader:
         optimizer.zero_grad()
         outputs = model(batch_features.cuda())
-        loss = criterion(outputs, batch_targets)
+        loss = criterion(outputs.cuda(), batch_targets.cuda())
         loss.backward()
         optimizer.step()
         train_loss += loss.item() * batch_features.size(0)
@@ -448,7 +448,7 @@ for SPACING in spacing_list:
                     for batch_features, batch_targets in test_loader:
                         outputs = model(batch_features.cuda())
                         eq_symbols.extend(outputs.numpy())
-                        loss = criterion(outputs, batch_targets)
+                        loss = criterion(outputs.cuda(), batch_targets.cuda())
                         test_loss += loss.item() * batch_features.size(0)
                         for i in range(len(outputs)):
                             x.append(outputs.numpy()[i][0])
