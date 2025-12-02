@@ -41,15 +41,16 @@ MOD_DICT = {
     15: 1 - 1j,  # 1111
 }
 
-spacing_list = ["15", "15p5", "16","16p5", "17", "17p6", "18", "50"]
+spacing_list = ["15", "15p5", "16", "16p5", "17", "17p6", "18", "50"]
 
 bernonequ = []
 berequ = []
 svmequ = []
 svmnoequ = []
 treeequ = []
-treenoequ= []
+treenoequ = []
 names = []
+
 
 class QAMDataset(Dataset):
     def __init__(self, features, targets):
@@ -61,6 +62,7 @@ class QAMDataset(Dataset):
 
     def __getitem__(self, idx):
         return self.features[idx], self.targets[idx]
+
 
 def sync_signals(tx: np.ndarray, rx: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     """
@@ -87,6 +89,7 @@ def sync_signals(tx: np.ndarray, rx: np.ndarray) -> tuple[np.ndarray, np.ndarray
 
     return sync_signal, rx
 
+
 def translate_tx(tx_i: list, tx_q: list, MOD_DICT: dict) -> list:
     """
     translate two list of entire numbers (they represent an imaginary number) in to a list of symbols (defined by the dictionary)
@@ -101,18 +104,19 @@ def translate_tx(tx_i: list, tx_q: list, MOD_DICT: dict) -> list:
     """
     tx_real = []
 
-    for i in range (0, len(tx_i)):
+    for i in range(0, len(tx_i)):
         for key, val in MOD_DICT.items():
-            if val == tx_i[i]+tx_q[i]*1j:
+            if val == tx_i[i] + tx_q[i] * 1j:
                 tx_real.append(key)
     return tx_real
+
 
 def objective(trial):
     DEVICE = torch.device("cuda")
     model = define_model(trial).to(torch.device(DEVICE))
-    #criterion = nn.MSELoss()
+    # criterion = nn.MSELoss()
     criterion = nn.L1Loss()
-    #criterion = nn.HuberLoss()
+    # criterion = nn.HuberLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
     EPOCHS = 100
     for epoch in range(EPOCHS):
@@ -141,6 +145,7 @@ def objective(trial):
         test_loss = test_loss / len(test_loader.dataset)
     return test_loss
 
+
 def define_model(trial):
     # We optimize the number of layers, hidden units and dropout ratio in each layer.
     n_layers = trial.suggest_int("n_layers", 2, 6)
@@ -149,7 +154,9 @@ def define_model(trial):
     in_features = 2
     out_features = 196
     for i in range(n_layers):
-        out_features = trial.suggest_int("n_units_l{}".format(i), 4, out_features-16, step = 16)
+        out_features = trial.suggest_int(
+            "n_units_l{}".format(i), 4, out_features - 16, step=16
+        )
         layers.append(nn.Linear(in_features, out_features))
         layers.append(nn.ReLU())
         layersre.append([out_features, in_features])
@@ -160,12 +167,13 @@ def define_model(trial):
         layers.append(nn.Linear(in_features, 16))
         layers.append(nn.ReLU())
         layersre.append([16, in_features])
-    for i in range(len(layersre)-1, 0, -1):
+    for i in range(len(layersre) - 1, 0, -1):
         layers.append(nn.Linear(layersre[i][0], layersre[i][1]))
         layers.append(nn.ReLU())
         in_features = layersre[i][1]
     layers.append(nn.Linear(in_features, 2))
     return nn.Sequential(*layers)
+
 
 def repeate_model(trial):
     n_layers = trial.params["n_layers"]
@@ -184,12 +192,13 @@ def repeate_model(trial):
         layers.append(nn.Linear(in_features, 16))
         layers.append(nn.ReLU())
         layersre.append([16, in_features])
-    for i in range(len(layersre)-1, 0, -1):
+    for i in range(len(layersre) - 1, 0, -1):
         layers.append(nn.Linear(layersre[i][0], layersre[i][1]))
         layers.append(nn.ReLU())
         in_features = layersre[i][1]
     layers.append(nn.Linear(in_features, 2))
     return nn.Sequential(*layers)
+
 
 def bit_error_rate(sym_rx: np.ndarray, sym_tx: np.ndarray) -> float:
     """
@@ -212,6 +221,7 @@ def bit_error_rate(sym_rx: np.ndarray, sym_tx: np.ndarray) -> float:
         error = sum(sym_rx_str[i] != sym_tx_str[i] for i in range(len(sym_tx_str)))
     ber = error / len(sym_rx_str)
     return ber
+
 
 def __do_backup(filename: str, n_backups: int = 0) -> None:
     """
@@ -245,24 +255,24 @@ def __do_backup(filename: str, n_backups: int = 0) -> None:
         dst = backup_filename(i)
         os.rename(src, dst) if os.path.exists(src) else None
 
+
 """ -Cargar datos de entrenamieno- """
 
-X_test = np.empty([0,2])
-Y_test = np.empty([0,2])
-X_train = np.empty([0,2])
-Y_train = np.empty([0,2])
+X_test = np.empty([0, 2])
+Y_test = np.empty([0, 2])
+X_train = np.empty([0, 2])
+Y_train = np.empty([0, 2])
 
 """ --Importar datos-- """
 
 for spacing in spacing_list:
-
     if spacing == "50":
         db = "31.3"
     else:
         db = "32"
 
     rx, tx = dataloader16gb(database_path, spacing, db)
-    df = pd.DataFrame({"grid":demodulate(rx, MOD_DICT)})
+    df = pd.DataFrame({"grid": demodulate(rx, MOD_DICT)})
 
     """ --sincronizar datos-- """
 
@@ -273,8 +283,8 @@ for spacing in spacing_list:
     txq = []
 
     for i in tx_symbols:
-            txq.append(MOD_DICT[i].real)
-            txi.append(MOD_DICT[i].imag)
+        txq.append(MOD_DICT[i].real)
+        txi.append(MOD_DICT[i].imag)
 
     df["txi"] = txi
     df["txq"] = txq
@@ -284,12 +294,14 @@ for spacing in spacing_list:
     X = rx.values
     Y = df[["txi", "txq"]].values
 
-    X_train_incomplete, X_test_incomplete, Y_train_incomplete, Y_test_incomplete = train_test_split(X, Y, test_size=90000, shuffle = True)
+    X_train_incomplete, X_test_incomplete, Y_train_incomplete, Y_test_incomplete = (
+        train_test_split(X, Y, test_size=90000, shuffle=True)
+    )
 
-    X_test = np.append(X_test, X_test_incomplete, axis = 0)
-    Y_test = np.append(Y_test, Y_test_incomplete, axis = 0)
-    X_train = np.append(X_train, X_train_incomplete, axis = 0)
-    Y_train = np.append(Y_train, Y_train_incomplete, axis = 0)
+    X_test = np.append(X_test, X_test_incomplete, axis=0)
+    Y_test = np.append(Y_test, Y_test_incomplete, axis=0)
+    X_train = np.append(X_train, X_train_incomplete, axis=0)
+    Y_train = np.append(Y_train, Y_train_incomplete, axis=0)
 
 """ -Parametrizar modelo- """
 
@@ -340,7 +352,7 @@ for epoch in range(EPOCHS):
     train_loss = train_loss / len(train_loader.dataset)
 
 torch.save(model, "../resultados/modelos/variacion_ghz.pth")
-#model = torch.load("../resultados/modelos/variacion_ghz.pth", weights_only = False)
+# model = torch.load("../resultados/modelos/variacion_ghz.pth", weights_only = False)
 model.eval()
 
 """ -Cargar datos- """
@@ -358,17 +370,31 @@ for SPACING in spacing_list:
                 continue
         else:
             dir_name = directory.name
-        if SPACING == dir_name[0:dir_name.find("GHz")]:
+        if SPACING == dir_name[0 : dir_name.find("GHz")]:
             for subdir in sorted(directory.iterdir()):
                 if subdir.is_dir():
                     continue
-                osnrlist.append(subdir.name[subdir.name.find("consY")+len("consY"):subdir.name.find("dB")])
-                rx, tx = dataloader16gb(database_path, SPACING, subdir.name[subdir.name.find("consY")+len("consY"):subdir.name.find("dB")])
+                osnrlist.append(
+                    subdir.name[
+                        subdir.name.find("consY") + len("consY") : subdir.name.find(
+                            "dB"
+                        )
+                    ]
+                )
+                rx, tx = dataloader16gb(
+                    database_path,
+                    SPACING,
+                    subdir.name[
+                        subdir.name.find("consY") + len("consY") : subdir.name.find(
+                            "dB"
+                        )
+                    ],
+                )
 
                 """ -Demodular- """
                 """ --tradicional-- """
 
-                df = pd.DataFrame({"grid":demodulate(rx, MOD_DICT)})
+                df = pd.DataFrame({"grid": demodulate(rx, MOD_DICT)})
 
                 """ --sincronizar datos-- """
 
@@ -377,11 +403,15 @@ for SPACING in spacing_list:
 
                 """ --SVM-- """
 
-                df["svm"], df["svm_tested"] = svm(rx[["I", "Q"]].values, df["tx_symbols"].values)
+                df["svm"], df["svm_tested"] = svm(
+                    rx[["I", "Q"]].values, df["tx_symbols"].values
+                )
 
                 """ --decision tree-- """
 
-                df["tree"], df["tree_tested"] = decisiontree(rx[["I", "Q"]].values, df["tx_symbols"].values)
+                df["tree"], df["tree_tested"] = decisiontree(
+                    rx[["I", "Q"]].values, df["tx_symbols"].values
+                )
 
                 """ - calcular metricas- """
 
@@ -395,7 +425,7 @@ for SPACING in spacing_list:
                 for i in df["tx_symbols"]:
                     txq.append(MOD_DICT[i].real)
                     txi.append(MOD_DICT[i].imag)
-                tx = pd.DataFrame({"I":txi, "Q":txq})
+                tx = pd.DataFrame({"I": txi, "Q": txq})
                 X_test = rx.values
                 Y_test = tx.values
                 scaler = MinMaxScaler().fit(X_test)
@@ -404,7 +434,9 @@ for SPACING in spacing_list:
                 X_test_tensor = torch.FloatTensor(X_test_s)
                 Y_test_tensor = torch.FloatTensor(Y_test_s)
                 test_dataset = QAMDataset(X_test_tensor, Y_test_tensor)
-                test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
+                test_loader = DataLoader(
+                    test_dataset, batch_size=batch_size, shuffle=False
+                )
 
                 criterion = nn.L1Loss()
                 eq_symbols = []
@@ -442,32 +474,60 @@ for SPACING in spacing_list:
                     I.append(datapoint[0])
                     Q.append(datapoint[1])
 
-                tx = np.array(demodulate(pd.DataFrame({"I":I, "Q":Q}), MOD_DICT))
+                tx = np.array(demodulate(pd.DataFrame({"I": I, "Q": Q}), MOD_DICT))
 
                 """ --tradicional-- """
-                dfasist = pd.DataFrame({"I":df["I_equalized"], "Q":df["Q_equalized"]})
+                dfasist = pd.DataFrame({"I": df["I_equalized"], "Q": df["Q_equalized"]})
                 df["grid_equlized"] = demodulate(dfasist, MOD_DICT)
 
                 """ --SVM-- """
 
-                df["svm_equalized"], df["svm_equalized_tested"] = svm(df[["I_equalized", "Q_equalized"]].values, tx)
+                df["svm_equalized"], df["svm_equalized_tested"] = svm(
+                    df[["I_equalized", "Q_equalized"]].values, tx
+                )
 
                 """ --decision tree-- """
 
-                df["tree_equalized"], df["tree_equalized_tested"] = decisiontree(df[["I_equalized", "Q_equalized"]].values, tx)
+                df["tree_equalized"], df["tree_equalized_tested"] = decisiontree(
+                    df[["I_equalized", "Q_equalized"]].values, tx
+                )
 
                 """ -calcular metricas- """
 
-                berequ.append(bit_error_rate(df["grid_equlized"], demodulate(pd.DataFrame({"I":I, "Q":Q}), MOD_DICT)))
-                svmequ.append(bit_error_rate(df["svm_equalized"], df["svm_equalized_tested"]))
-                treeequ.append(bit_error_rate(df["tree_equalized"], df["tree_equalized_tested"]))
+                berequ.append(
+                    bit_error_rate(
+                        df["grid_equlized"],
+                        demodulate(pd.DataFrame({"I": I, "Q": Q}), MOD_DICT),
+                    )
+                )
+                svmequ.append(
+                    bit_error_rate(df["svm_equalized"], df["svm_equalized_tested"])
+                )
+                treeequ.append(
+                    bit_error_rate(df["tree_equalized"], df["tree_equalized_tested"])
+                )
 
                 """ -Guardar los resultados- """
 
-                df.to_parquet(path=f"../resultados/{SPACING}GHZ/{subdir.name[subdir.name.find("consY")+len("consY"):subdir.name.find("dB")]}dB.parqueth", index=False)
+                df.to_parquet(
+                    path=f"../resultados/{SPACING}GHZ/{subdir.name[subdir.name.find('consY') + len('consY') : subdir.name.find('dB')]}dB.parquet",
+                    index=False,
+                )
 
-                names.append(f"{SPACING}GHZ {subdir.name[subdir.name.find("consY")+len("consY"):subdir.name.find("dB")]}dB")
-                diccion = {'name': names, 'grid': bernonequ, 'grid_equ': berequ, 'svm': svmnoequ, 'svm_equ': svmequ, 'tree': treenoequ, 'tree_equ': treeequ}
+                names.append(
+                    f"{SPACING}GHZ {subdir.name[subdir.name.find('consY') + len('consY') : subdir.name.find('dB')]}dB"
+                )
+                diccion = {
+                    "name": names,
+                    "grid": bernonequ,
+                    "grid_equ": berequ,
+                    "svm": svmnoequ,
+                    "svm_equ": svmequ,
+                    "tree": treenoequ,
+                    "tree_equ": treeequ,
+                }
 
                 __do_backup("../resultados/%ber_variacion_ghz.parqueth", 1)
-                pd.DataFrame(diccion).to_parquet("../resultados/%ber_variacion_ghz.parqueth", index=False)
+                pd.DataFrame(diccion).to_parquet(
+                    "../resultados/%ber_variacion_ghz.parqueth", index=False
+                )
