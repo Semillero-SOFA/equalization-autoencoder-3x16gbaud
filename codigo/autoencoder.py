@@ -342,8 +342,8 @@ for epoch in range(EPOCHS):
     train_loss = 0.0
     for batch_features, batch_targets in train_loader:
         optimizer.zero_grad()
-        outputs = model(batch_features.cuda())
-        loss = criterion(outputs.cuda(), batch_targets.cuda())
+        outputs = model(batch_features)
+        loss = criterion(outputs, batch_targets)
         loss.backward()
         optimizer.step()
         train_loss += loss.item() * batch_features.size(0)
@@ -351,7 +351,7 @@ for epoch in range(EPOCHS):
     # Calcular la pérdida promedio por epoch
     train_loss = train_loss / len(train_loader.dataset)
 
-torch.save(model, "../resultados/modelos/variacion_ghz.pth")
+# torch.save(model, "../resultados/modelos/variacion_ghz.pth")
 # model = torch.load("../resultados/modelos/variacion_ghz.pth", weights_only = False)
 model.eval()
 
@@ -446,9 +446,9 @@ for SPACING in spacing_list:
                 y = []
                 with torch.no_grad():
                     for batch_features, batch_targets in test_loader:
-                        outputs = model(batch_features.cuda())
+                        outputs = model(batch_features)
                         eq_symbols.extend(outputs.numpy())
-                        loss = criterion(outputs.cuda(), batch_targets.cuda())
+                        loss = criterion(outputs, batch_targets)
                         test_loss += loss.item() * batch_features.size(0)
                         for i in range(len(outputs)):
                             x.append(outputs.numpy()[i][0])
